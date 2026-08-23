@@ -7,9 +7,7 @@ import {
   getMeetings,
   getMeetingStats,
   getMeetingById,
-  deleteMeeting,
-  toggleActionItem,
-  askQuestion
+  deleteMeeting
 } from '../controllers/meetingController.js';
 
 const router = express.Router();
@@ -22,12 +20,6 @@ router.post('/:id/transcribe', transcribeMeeting);
 
 // POST /api/meetings/:id/analyze (Analyze transcript for summary, decisions, action items)
 router.post('/:id/analyze', analyzeMeeting);
-
-// POST /api/meetings/:id/ask (Ask MeetAura question grounded in meeting transcript)
-router.post('/:id/ask', askQuestion);
-
-// PATCH /api/meetings/:id/action-items/:itemIndex (Toggle or update action item completion)
-router.patch('/:id/action-items/:itemIndex', toggleActionItem);
 
 // GET /api/meetings/stats (Aggregated statistics from MongoDB)
 router.get('/stats', getMeetingStats);
@@ -42,4 +34,3 @@ router.get('/:id', getMeetingById);
 router.delete('/:id', deleteMeeting);
 
 export default router;
-

@@ -1,21 +1,6 @@
 const API_BASE = '/api';
 
 /**
- * Safe JSON parser for HTTP responses
- */
-async function parseResponse(res, fallbackMessage = 'An unexpected error occurred') {
-  try {
-    const data = await res.json();
-    return data;
-  } catch (err) {
-    return {
-      status: 'error',
-      message: res.statusText || fallbackMessage
-    };
-  }
-}
-
-/**
  * Health check endpoint service
  */
 export async function checkApiHealth() {
@@ -24,7 +9,7 @@ export async function checkApiHealth() {
     if (!res.ok) {
       throw new Error(`API health check failed with status: ${res.status}`);
     }
-    return await parseResponse(res, 'Health check failed');
+    return await res.json();
   } catch (error) {
     console.error('Failed to contact MeetAura backend:', error);
     return { status: 'offline', error: error.message };
@@ -40,7 +25,7 @@ export const meetingApi = {
    */
   getMeetingStats: async () => {
     const res = await fetch(`${API_BASE}/meetings/stats`);
-    const data = await parseResponse(res, 'Failed to fetch workspace statistics');
+    const data = await res.json();
     if (!res.ok) {
       throw new Error(data.message || 'Failed to fetch workspace statistics');
     }
@@ -57,7 +42,7 @@ export const meetingApi = {
    */
   getMeetings: async () => {
     const res = await fetch(`${API_BASE}/meetings`);
-    const data = await parseResponse(res, 'Failed to fetch meetings');
+    const data = await res.json();
     if (!res.ok) {
       throw new Error(data.message || 'Failed to fetch meetings');
     }
@@ -69,7 +54,7 @@ export const meetingApi = {
    */
   getMeetingById: async (id) => {
     const res = await fetch(`${API_BASE}/meetings/${id}`);
-    const data = await parseResponse(res, 'Failed to fetch meeting details');
+    const data = await res.json();
     if (!res.ok) {
       throw new Error(data.message || 'Failed to fetch meeting details');
     }
@@ -84,7 +69,7 @@ export const meetingApi = {
       method: 'POST',
       body: formData,
     });
-    const data = await parseResponse(res, 'Failed to upload audio');
+    const data = await res.json();
     if (!res.ok) {
       throw new Error(data.message || 'Failed to upload audio');
     }
@@ -92,7 +77,7 @@ export const meetingApi = {
   },
 
   /**
-   * Request Gemini AI Audio Transcription
+   * Request Gemini AI Audio Transcription (Stage 3)
    */
   transcribeMeeting: async (id, force = false) => {
     const res = await fetch(`${API_BASE}/meetings/${id}/transcribe`, {
@@ -102,7 +87,7 @@ export const meetingApi = {
       },
       body: JSON.stringify({ force }),
     });
-    const data = await parseResponse(res, 'Failed to generate transcription');
+    const data = await res.json();
     if (!res.ok) {
       throw new Error(data.message || 'Failed to generate transcription');
     }
@@ -110,7 +95,7 @@ export const meetingApi = {
   },
 
   /**
-   * Request Gemini AI Meeting Analysis: Summary, Key Points, Decisions, Action Items
+   * Request Gemini AI Meeting Analysis: Summary, Key Points, Decisions, Action Items (Stage 4)
    */
   analyzeMeeting: async (id, force = false) => {
     const res = await fetch(`${API_BASE}/meetings/${id}/analyze`, {
@@ -120,7 +105,7 @@ export const meetingApi = {
       },
       body: JSON.stringify({ force }),
     });
-    const data = await parseResponse(res, 'Failed to analyze meeting');
+    const data = await res.json();
     if (!res.ok) {
       throw new Error(data.message || 'Failed to analyze meeting');
     }
@@ -134,49 +119,10 @@ export const meetingApi = {
     const res = await fetch(`${API_BASE}/meetings/${id}`, {
       method: 'DELETE',
     });
-    const data = await parseResponse(res, 'Failed to delete meeting');
+    const data = await res.json();
     if (!res.ok) {
       throw new Error(data.message || 'Failed to delete meeting');
     }
     return data;
-  },
-
-  /**
-   * Toggle action item completed status
-   */
-  toggleActionItem: async (id, itemIndex, completed) => {
-    const res = await fetch(`${API_BASE}/meetings/${id}/action-items/${itemIndex}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(typeof completed === 'boolean' ? { completed } : {}),
-    });
-    const data = await parseResponse(res, 'Failed to update action item');
-    if (!res.ok) {
-      throw new Error(data.message || 'Failed to update action item');
-    }
-    return data;
-  },
-
-  /**
-   * Ask MeetAura a question grounded in the current meeting transcript
-   */
-  askMeetingQuestion: async (id, question) => {
-    const res = await fetch(`${API_BASE}/meetings/${id}/ask`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ question }),
-    });
-    const data = await parseResponse(res, 'Failed to get answer from MeetAura');
-    if (!res.ok) {
-      throw new Error(data.message || 'Failed to get answer from MeetAura');
-    }
-    return data;
   }
 };
-
-
-

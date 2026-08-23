@@ -13,6 +13,7 @@ export function Layout({ children }) {
       <main className="flex-1">
         {children}
       </main>
+      {/* Footer ONLY on home page */}
       {isHomePage && <Footer />}
     </div>
   );

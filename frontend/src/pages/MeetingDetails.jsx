@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -21,18 +21,13 @@ import {
   User, 
   Hourglass, 
   CheckCircle,
-  BrainCircuit,
-  Radio,
   CheckSquare,
-  ShieldCheck
+  Square
 } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
 import Badge from '../components/Badge';
 import DeleteModal from '../components/DeleteModal';
-import AudioPlayer from '../components/AudioPlayer';
-import AskMeetAura from '../components/AskMeetAura';
-import ProcessingView from '../components/ProcessingView';
 import { MeetingDetailsSkeleton } from '../components/ui/Skeleton';
 import { formatDate, formatFileSize } from '../utils/formatters';
 import { meetingApi } from '../services/api';
@@ -47,8 +42,11 @@ export function MeetingDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // Workspace Tabs: 'insights' | 'actions' | 'transcript' | 'ask'
+  // Workspace Tab State: 'insights' | 'actions' | 'transcript'
   const [activeTab, setActiveTab] = useState('insights');
+
+  // Interactive Task Completion Toggle State (Local UX enhancement)
+  const [completedTasks, setCompletedTasks] = useState({});
 
   // AI Operations State
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -63,9 +61,6 @@ export function MeetingDetails() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Execution lock ref to prevent duplicate concurrent auto-triggers
-  const autoTriggerRef = useRef(false);
-
   const fetchMeetingDetails = async () => {
     try {
       setLoading(true);
@@ -73,17 +68,8 @@ export function MeetingDetails() {
       const data = await meetingApi.getMeetingById(id);
       setMeeting(data);
       
-      if (data && data.status === 'uploaded' && !autoTriggerRef.current) {
-        autoTriggerRef.current = true;
-        setActiveTab('insights');
-        setTimeout(() => {
-          handleTranscribe(false);
-        }, 300);
-      } else if (data && data.status === 'transcribed' && (!data.summary || data.summary.trim() === '') && !autoTriggerRef.current) {
-        autoTriggerRef.current = true;
-        setTimeout(() => {
-          handleAnalyze(false);
-        }, 300);
+      if (data && data.status === 'uploaded') {
+        setActiveTab('transcript');
       }
     } catch (err) {
       console.error('Error loading meeting details:', err);
@@ -99,60 +85,36 @@ export function MeetingDetails() {
     }
   }, [id]);
 
-  // Live polling while meeting is processing in backend
-  useEffect(() => {
-    let intervalId = null;
-    const isProcessing = meeting && (meeting.status === 'transcribing' || meeting.status === 'analyzing');
-    
-    if (isProcessing) {
-      intervalId = setInterval(async () => {
-        try {
-          const updated = await meetingApi.getMeetingById(id);
-          if (updated && (updated.status !== meeting.status || updated.summary !== meeting.summary)) {
-            setMeeting(updated);
-            if (updated.status === 'completed') {
-              toast.success('AI Meeting Analysis complete!');
-            }
-          }
-        } catch (pollErr) {
-          // Silent polling error
-        }
-      }, 2000);
-    }
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
-  }, [meeting?.status, id]);
+  const toggleTaskCompletion = (idx) => {
+    setCompletedTasks(prev => ({
+      ...prev,
+      [idx]: !prev[idx]
+    }));
+  };
 
   // Handle Stage 3 Transcription
   const handleTranscribe = async (force = false) => {
-    if (isTranscribing) return;
+    if (isTranscribing || isAnalyzing) return;
 
     try {
       setIsTranscribing(true);
       setOpError('');
       setMeeting(prev => ({ ...prev, status: 'transcribing' }));
+      setActiveTab('transcript');
 
       const result = await meetingApi.transcribeMeeting(id, force);
       if (result.meeting) {
         setMeeting(result.meeting);
-        if (result.meeting.status === 'transcribed' && result.meeting.transcript) {
-          toast.success('Gemini audio transcription completed!');
-          handleAnalyze(false);
-        }
+        toast.success('Conversation transcribed successfully.');
       } else {
         await fetchMeetingDetails();
       }
     } catch (err) {
       console.error('Transcription error:', err);
-      const errMsg = err.message || 'Transcription failed. Please try again.';
-      // Do not mark failed if already in progress
-      if (!errMsg.toLowerCase().includes('in progress')) {
-        setOpError(errMsg);
-        toast.error(errMsg);
-        setMeeting(prev => ({ ...prev, status: 'failed', errorMessage: errMsg }));
-      }
+      const errMsg = err.message || 'Transcription could not be completed. Please try again.';
+      setOpError(errMsg);
+      toast.error(errMsg);
+      setMeeting(prev => ({ ...prev, status: 'failed', errorMessage: errMsg }));
     } finally {
       setIsTranscribing(false);
     }
@@ -160,32 +122,27 @@ export function MeetingDetails() {
 
   // Handle Stage 4 AI Meeting Analysis
   const handleAnalyze = async (force = false) => {
-    if (isAnalyzing) return;
+    if (isAnalyzing || isTranscribing) return;
 
     try {
       setIsAnalyzing(true);
       setOpError('');
       setMeeting(prev => ({ ...prev, status: 'analyzing' }));
+      setActiveTab('insights');
 
       const result = await meetingApi.analyzeMeeting(id, force);
       if (result.meeting) {
         setMeeting(result.meeting);
-        if (result.meeting.status === 'completed') {
-          toast.success('AI meeting insights synthesized!');
-          setActiveTab('insights');
-        }
+        toast.success('Meeting brief & next steps synthesized.');
       } else {
         await fetchMeetingDetails();
       }
     } catch (err) {
       console.error('Analysis error:', err);
-      const errMsg = err.message || 'Meeting analysis failed. Please try again.';
-      // Do not mark failed if already in progress
-      if (!errMsg.toLowerCase().includes('in progress')) {
-        setOpError(errMsg);
-        toast.error(errMsg);
-        setMeeting(prev => ({ ...prev, status: 'failed', errorMessage: errMsg }));
-      }
+      const errMsg = err.message || 'Meeting synthesis could not be completed. Please try again.';
+      setOpError(errMsg);
+      toast.error(errMsg);
+      setMeeting(prev => ({ ...prev, status: 'failed', errorMessage: errMsg }));
     } finally {
       setIsAnalyzing(false);
     }
@@ -196,7 +153,7 @@ export function MeetingDetails() {
     
     navigator.clipboard.writeText(meeting.transcript).then(() => {
       setCopied(true);
-      toast.success('Transcript copied to clipboard!');
+      toast.success('Conversation copied to clipboard.');
       setTimeout(() => setCopied(false), 2000);
     });
   };
@@ -211,36 +168,6 @@ export function MeetingDetails() {
       console.error('Failed to delete meeting:', err);
       toast.error(err.message || 'Failed to delete meeting.');
       setIsDeleting(false);
-    }
-  };
-
-  // Toggle Action Item completion with optimistic UI and MongoDB persistence
-  const handleToggleActionItem = async (index) => {
-    if (!meeting?.actionItems || !meeting.actionItems[index]) return;
-    const currentCompleted = Boolean(meeting.actionItems[index].completed);
-    const updatedStatus = !currentCompleted;
-
-    // Optimistic UI update
-    setMeeting(prev => {
-      if (!prev || !prev.actionItems) return prev;
-      const updatedItems = [...prev.actionItems];
-      updatedItems[index] = { ...updatedItems[index], completed: updatedStatus };
-      return { ...prev, actionItems: updatedItems };
-    });
-
-    try {
-      await meetingApi.toggleActionItem(id, index, updatedStatus);
-      toast.success(updatedStatus ? 'Action item marked as done' : 'Action item marked as pending');
-    } catch (err) {
-      console.error('Failed to toggle action item:', err);
-      // Rollback on error
-      setMeeting(prev => {
-        if (!prev || !prev.actionItems) return prev;
-        const updatedItems = [...prev.actionItems];
-        updatedItems[index] = { ...updatedItems[index], completed: currentCompleted };
-        return { ...prev, actionItems: updatedItems };
-      });
-      toast.error('Failed to update action item status');
     }
   };
 
@@ -260,7 +187,7 @@ export function MeetingDetails() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <MeetingDetailsSkeleton />
       </div>
     );
@@ -268,7 +195,7 @@ export function MeetingDetails() {
 
   if (error || !meeting) {
     return (
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-16 space-y-6">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-6">
         <Link
           to="/meetings"
           className="inline-flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors"
@@ -300,12 +227,9 @@ export function MeetingDetails() {
   const {
     title = 'Untitled Meeting',
     originalFileName,
-    filePath,
     createdAt = new Date().toISOString(),
     status = 'uploaded',
     fileSize = 0,
-    mimeType = '',
-    duration = 0,
     transcript = '',
     summary = '',
     keyPoints = [],
@@ -315,31 +239,27 @@ export function MeetingDetails() {
   } = meeting;
 
   const currentStatus = isAnalyzing ? 'analyzing' : isTranscribing ? 'transcribing' : status;
-  const audioSrc = filePath ? (filePath.startsWith('http') ? filePath : `/uploads/${filePath}`) : '';
 
   const getStatusDisplayLabel = () => {
     switch (currentStatus) {
       case 'completed':
-        return 'Completed';
+        return 'Brief Ready';
       case 'analyzing':
-        return 'Analyzing';
+        return 'Synthesizing';
       case 'transcribed':
-        return 'Transcript Ready';
+        return 'Transcribed';
       case 'transcribing':
         return 'Transcribing';
       case 'failed':
-        return 'Failed';
+        return 'Needs Attention';
       case 'uploaded':
       default:
         return 'Uploaded';
     }
   };
 
-  // If the meeting is still purely uploaded or in initial processing without any transcript/summary yet:
-  const isInitialProcessing = (currentStatus === 'uploaded' || currentStatus === 'transcribing' || currentStatus === 'analyzing' || currentStatus === 'failed') && !transcript && !summary;
-
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       
       {/* 1. Header Toolbar */}
       <div className="flex items-center justify-between gap-4 pb-2">
@@ -373,7 +293,7 @@ export function MeetingDetails() {
               isLoading={isAnalyzing}
               icon={Sparkles}
             >
-              Analyze Meeting
+              Generate Meeting Brief
             </Button>
           )}
 
@@ -385,7 +305,7 @@ export function MeetingDetails() {
               isLoading={isAnalyzing}
               icon={RefreshCw}
             >
-              Re-analyze
+              Re-synthesize
             </Button>
           )}
 
@@ -407,29 +327,30 @@ export function MeetingDetails() {
           <button
             type="button"
             onClick={() => setShowDeleteModal(true)}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
             title="Delete meeting"
+            aria-label="Delete meeting"
           >
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* 2. Title & Metadata Header */}
+      {/* 2. Compact Title & Metadata Header */}
       <div className="space-y-2 pb-2">
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={currentStatus} dot>
             {getStatusDisplayLabel()}
           </Badge>
-          <span className="text-xs text-slate-500">•</span>
+          <span className="text-xs text-slate-600">•</span>
           <span className="text-xs text-slate-400 flex items-center gap-1">
             <Calendar className="w-3 h-3 text-slate-500" />
             {formatDate(createdAt)}
           </span>
           {fileSize > 0 && (
             <>
-              <span className="text-xs text-slate-500">•</span>
-              <span className="text-xs text-slate-400 flex items-center gap-1 font-mono">
+              <span className="text-xs text-slate-600">•</span>
+              <span className="text-xs text-slate-400 flex items-center gap-1">
                 <FileAudio className="w-3 h-3 text-slate-500" />
                 {originalFileName} ({formatFileSize(fileSize)})
               </span>
@@ -440,425 +361,426 @@ export function MeetingDetails() {
         <h1 className="font-display font-bold text-2xl sm:text-3xl text-white tracking-tight">
           {title}
         </h1>
+
+        {/* Polished contextual processing feedback */}
+        <AnimatePresence>
+          {currentStatus === 'transcribing' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-xs text-violet-200 flex items-center gap-2.5 mt-2"
+            >
+              <Loader2 className="w-4 h-4 text-violet-400 animate-spin shrink-0" />
+              <span>MeetAura is listening · Transcribing dialogue with speaker recognition...</span>
+            </motion.div>
+          )}
+
+          {currentStatus === 'analyzing' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/20 text-xs text-violet-200 flex items-center gap-2.5 mt-2"
+            >
+              <Loader2 className="w-4 h-4 text-aura-cyan animate-spin shrink-0" />
+              <span>Turning your conversation into a meeting brief · Extracting what mattered and next steps...</span>
+            </motion.div>
+          )}
+
+          {currentStatus === 'failed' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-300 flex items-center justify-between gap-2.5 mt-2"
+            >
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>{opError || errorMessage || "We couldn't process this meeting. Please try again."}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (transcript) handleAnalyze(true);
+                  else handleTranscribe(true);
+                }}
+                className="text-xs font-semibold text-rose-300 hover:text-white underline underline-offset-2"
+              >
+                Retry
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* 3. INITIAL PROCESSING STATE VIEW */}
-      {isInitialProcessing ? (
-        <ProcessingView
-          status={currentStatus}
-          errorMessage={opError || errorMessage}
-          title={title}
-          onRetry={() => {
-            if (transcript) handleAnalyze(true);
-            else handleTranscribe(true);
-          }}
-        />
-      ) : (
-        <>
-          {/* 4. Segmented Workspace Navigation */}
-          <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto scrollbar-none">
-            <button
-              type="button"
-              onClick={() => setActiveTab('insights')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer ${
-                activeTab === 'insights'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>AI Insights & Summary</span>
-            </button>
+      {/* 3. Clean Workspace Segmented Tabs */}
+      <div className="flex items-center gap-1.5 border-b border-slate-800 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab('insights')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            activeTab === 'insights'
+              ? 'bg-slate-800 text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-violet-400" />
+          <span>Meeting Brief</span>
+        </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('actions')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer ${
-                activeTab === 'actions'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
-            >
-              <ListTodo className="w-3.5 h-3.5 text-violet-400" />
-              <span>Action Items</span>
-              {actionItems && actionItems.length > 0 && (
-                <span className="bg-violet-500/20 text-violet-300 text-[10px] font-bold px-1.5 py-0.2 rounded-full border border-violet-500/30 font-mono">
-                  {actionItems.length}
-                </span>
-              )}
-            </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('actions')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            activeTab === 'actions'
+              ? 'bg-slate-800 text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+          }`}
+        >
+          <ListTodo className="w-3.5 h-3.5 text-cyan-400" />
+          <span>What happens next</span>
+          {actionItems && actionItems.length > 0 && (
+            <span className="text-[10px] bg-cyan-500/10 text-cyan-300 px-1.5 py-0.2 rounded-full border border-cyan-500/20 font-semibold">
+              {actionItems.length}
+            </span>
+          )}
+        </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('transcript')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer ${
-                activeTab === 'transcript'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5 text-slate-400" />
-              <span>Full Transcript & Audio</span>
-            </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('transcript')}
+          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            activeTab === 'transcript'
+              ? 'bg-slate-800 text-white shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+          }`}
+        >
+          <FileText className="w-3.5 h-3.5 text-slate-400" />
+          <span>The conversation</span>
+        </button>
+      </div>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('ask')}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer ${
-                activeTab === 'ask'
-                  ? 'bg-slate-800 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
-              }`}
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Ask MeetAura</span>
-              <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-1.5 py-0.2 rounded-full border border-emerald-500/30">
-                AI
-              </span>
-            </button>
-          </div>
+      {/* 4. Tab Content Panes */}
+      <AnimatePresence mode="wait">
+        
+        {/* TAB 1: MEETING BRIEF (The big picture, What mattered, What was decided) */}
+        {activeTab === 'insights' && (
+          <motion.div
+            key="tab-insights"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="space-y-6"
+          >
+            {/* The Big Picture (Executive Summary) */}
+            <GlassCard className="p-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-violet-400 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  The big picture
+                </h2>
+                {status === 'completed' && (
+                  <span className="text-[11px] text-slate-500">Synthesized by MeetAura</span>
+                )}
+              </div>
 
-          {/* TAB 1: AI INSIGHTS & SUMMARY */}
-          {activeTab === 'insights' && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-6"
-            >
-              {/* Clean HTML5 Audio Player */}
-              {audioSrc && (
-                <AudioPlayer
-                  src={audioSrc}
-                  title={title}
-                  initialDuration={duration}
-                />
-              )}
-
-              {/* 1. Executive Summary */}
-              <GlassCard className="p-6 sm:p-7 space-y-4 bg-gradient-to-b from-slate-900/90 to-slate-950/90 border border-slate-800">
-                <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400">
-                      <BrainCircuit className="w-4 h-4" />
-                    </div>
-                    <h3 className="font-semibold text-sm sm:text-base text-white">
-                      Executive Summary
-                    </h3>
-                  </div>
-                  <span className="text-[10px] font-semibold text-cyan-300 bg-cyan-500/10 px-2 py-0.5 rounded-full border border-cyan-500/20">
-                    Grounded AI
-                  </span>
-                </div>
-
-                {summary ? (
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
-                    {summary}
+              {status === 'completed' && summary ? (
+                <p className="text-sm text-slate-200 leading-relaxed">
+                  {summary}
+                </p>
+              ) : (
+                <div className="py-8 text-center space-y-2">
+                  <p className="text-xs text-slate-400">
+                    {status === 'transcribed' 
+                      ? 'Transcript is ready. Click "Generate Meeting Brief" to uncover the big picture.' 
+                      : 'Meeting brief is not available yet.'}
                   </p>
+                  {status === 'transcribed' && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleAnalyze(false)}
+                      icon={Sparkles}
+                    >
+                      Generate Meeting Brief
+                    </Button>
+                  )}
+                </div>
+              )}
+            </GlassCard>
+
+            {/* 2-Column: What Mattered (Key Points) & What Was Decided (Decisions) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* What Mattered */}
+              <GlassCard className="p-6 space-y-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  What mattered
+                </h3>
+
+                {status === 'completed' && keyPoints && keyPoints.length > 0 ? (
+                  <ul className="space-y-2.5">
+                    {keyPoints.map((point, idx) => (
+                      <li key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-200 leading-relaxed">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 mt-2 shrink-0" />
+                        <span>{point}</span>
+                      </li>
+                    ))}
+                  </ul>
                 ) : (
-                  <div className="py-6 text-center text-slate-500 text-xs">
-                    No summary generated yet. Click "Analyze Meeting" above to generate insights.
-                  </div>
+                  <p className="text-xs text-slate-500 py-6 text-center">
+                    {status === 'completed' ? 'No discussion points identified.' : 'Key discussion points will appear after analysis.'}
+                  </p>
                 )}
               </GlassCard>
 
-              {/* 2. Key Discussion Points & Confirmed Decisions Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Key Discussion Points */}
-                <GlassCard className="p-6 space-y-4 bg-slate-900/60 border border-slate-800">
-                  <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center text-violet-400">
-                        <Sparkles className="w-4 h-4" />
-                      </div>
-                      <h3 className="font-semibold text-sm text-white">
-                        Key Discussion Points
-                      </h3>
-                    </div>
-                    {keyPoints && keyPoints.length > 0 && (
-                      <span className="text-[10px] font-mono text-slate-400">
-                        {keyPoints.length} points
-                      </span>
-                    )}
-                  </div>
-
-                  {keyPoints && keyPoints.length > 0 ? (
-                    <ul className="space-y-2.5">
-                      {keyPoints.map((point, idx) => (
-                        <motion.li
-                          key={idx}
-                          initial={{ opacity: 0, x: -5 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.05 }}
-                          className="flex items-start gap-2.5 text-xs sm:text-sm text-slate-300 leading-snug"
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0 mt-1.5" />
-                          <span>{point}</span>
-                        </motion.li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-xs text-slate-500 italic py-4">
-                      {status === 'completed' ? 'No key discussion points identified in this recording.' : 'Discussion points will appear after AI analysis.'}
-                    </p>
-                  )}
-                </GlassCard>
-
-                {/* Confirmed Decisions */}
-                <GlassCard className="p-6 space-y-4 bg-slate-900/60 border border-slate-800">
-                  <div className="flex items-center justify-between border-b border-slate-800/60 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
-                        <CheckCircle className="w-4 h-4" />
-                      </div>
-                      <h3 className="font-semibold text-sm text-white">
-                        Confirmed Decisions
-                      </h3>
-                    </div>
-                    {decisions && decisions.length > 0 && (
-                      <span className="text-[10px] font-semibold text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                        {decisions.length} Confirmed
-                      </span>
-                    )}
-                  </div>
-
-                  {decisions && decisions.length > 0 ? (
-                    <ul className="space-y-2.5">
-                      {decisions.map((decision, idx) => (
-                        <motion.li
-                          key={idx}
-                          initial={{ opacity: 0, x: -5 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.05 }}
-                          className="p-3 rounded-xl bg-emerald-950/20 border border-emerald-500/20 flex items-start gap-2.5 text-xs sm:text-sm text-emerald-100 leading-snug"
-                        >
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                          <span>{decision}</span>
-                        </motion.li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <div className="py-6 text-center space-y-1">
-                      <p className="text-xs text-slate-400 font-medium">
-                        No explicit decisions were detected.
-                      </p>
-                      <p className="text-[11px] text-slate-500">
-                        Decisions are strictly recorded only when participants explicitly confirm consensus.
-                      </p>
-                    </div>
-                  )}
-                </GlassCard>
-
-              </div>
-            </motion.div>
-          )}
-
-          {/* TAB 2: ACTION ITEMS */}
-          {activeTab === 'actions' && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-4"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-semibold text-base text-white">
-                    Action Items & Deliverables
+              {/* What Was Decided */}
+              <GlassCard className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    What was decided
                   </h3>
-                  <p className="text-xs text-slate-400">
-                    Tasks parsed from conversation with assigned owners and target deadlines.
-                  </p>
+                  {status === 'completed' && (
+                    <span className="text-[11px] text-slate-500">{decisions.length} recorded</span>
+                  )}
                 </div>
 
-                {actionItems && actionItems.length > 0 && (
-                  <Badge variant="cyan">
-                    {actionItems.filter(i => i.completed).length} / {actionItems.length} Done
-                  </Badge>
+                {status === 'completed' && decisions && decisions.length > 0 ? (
+                  <div className="space-y-2">
+                    {decisions.map((decision, idx) => (
+                      <div 
+                        key={idx}
+                        className="p-3 rounded-xl bg-slate-950/40 border border-emerald-500/15 flex items-start gap-2.5"
+                      >
+                        <Check className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                        <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium">
+                          {typeof decision === 'string' ? decision : decision.text || JSON.stringify(decision)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 py-6 text-center">
+                    {status === 'completed' ? 'No explicit decisions were captured from this meeting.' : 'Decisions will appear after analysis.'}
+                  </p>
                 )}
+              </GlassCard>
+
+            </div>
+          </motion.div>
+        )}
+
+        {/* TAB 2: WHAT HAPPENS NEXT (Action Items) */}
+        {activeTab === 'actions' && (
+          <motion.div
+            key="tab-actions"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display font-semibold text-base text-white">
+                  What happens next
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Actionable follow-ups with identified assignees and due dates.
+                </p>
               </div>
 
-              {actionItems && actionItems.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {actionItems.map((item, idx) => {
-                    const isDone = Boolean(item.completed);
-                    return (
-                      <GlassCard 
-                        key={idx} 
-                        className={`p-4 sm:p-5 space-y-3.5 transition-all ${
-                          isDone 
-                            ? 'bg-slate-900/30 border-emerald-500/20 opacity-80' 
-                            : 'bg-slate-900/60 hover:border-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <p className={`text-xs sm:text-sm font-medium leading-snug ${isDone ? 'line-through text-slate-400' : 'text-white'}`}>
-                            {item.task}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => handleToggleActionItem(idx)}
-                            className={`text-[10px] font-semibold px-2.5 py-1 rounded-lg border transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
-                              isDone
-                                ? 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/20'
-                                : 'text-cyan-300 bg-cyan-500/10 border-cyan-500/20 hover:bg-cyan-500/20'
-                            }`}
-                            title="Click to toggle status"
-                          >
-                            {isDone ? (
-                              <>
-                                <Check className="w-3 h-3 text-emerald-400" />
-                                <span>Completed</span>
-                              </>
-                            ) : (
-                              <span>Pending</span>
-                            )}
-                          </button>
+              {actionItems && actionItems.length > 0 && (
+                <Badge variant="cyan">
+                  {actionItems.length} {actionItems.length === 1 ? 'Deliverable' : 'Deliverables'}
+                </Badge>
+              )}
+            </div>
+
+            {status === 'completed' && actionItems && actionItems.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {actionItems.map((item, idx) => {
+                  const isDone = Boolean(completedTasks[idx]);
+                  return (
+                    <GlassCard 
+                      key={idx} 
+                      className={`p-4 space-y-3 transition-all cursor-pointer ${
+                        isDone ? 'bg-slate-950/40 border-slate-800 opacity-60' : 'bg-slate-900/40 hover:border-slate-700'
+                      }`}
+                      onClick={() => toggleTaskCompletion(idx)}
+                    >
+                      <div className="flex items-start gap-3">
+                        <button
+                          type="button"
+                          className="mt-0.5 text-slate-400 hover:text-cyan-400 transition-colors focus:outline-none shrink-0"
+                          aria-label={isDone ? 'Mark task pending' : 'Mark task completed'}
+                        >
+                          {isDone ? (
+                            <CheckSquare className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </button>
+                        <p className={`text-xs sm:text-sm font-medium leading-snug flex-1 transition-all ${
+                          isDone ? 'line-through text-slate-400' : 'text-white'
+                        }`}>
+                          {item.task}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/80">
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-3 h-3 text-violet-400 shrink-0" />
+                          <span className={item.owner ? 'text-slate-300' : 'text-slate-500 italic'}>
+                            {item.owner || 'Not specified'}
+                          </span>
                         </div>
 
-                        <div className="flex items-center justify-between text-xs text-slate-400 pt-2.5 border-t border-slate-800/80">
-                          <div className="flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5 text-violet-400 shrink-0" />
-                            <span className={item.owner ? 'text-slate-200' : 'text-slate-500 italic'}>
-                              {item.owner || 'Not specified'}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 font-mono">
-                            <Hourglass className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                            <span className={item.deadline ? 'text-slate-200' : 'text-slate-500 italic'}>
-                              {item.deadline || 'Not specified'}
-                            </span>
-                          </div>
+                        <div className="flex items-center gap-1.5">
+                          <Hourglass className="w-3 h-3 text-cyan-400 shrink-0" />
+                          <span className={item.deadline ? 'text-slate-300' : 'text-slate-500 italic'}>
+                            {item.deadline ? `Due ${item.deadline}` : 'No deadline'}
+                          </span>
                         </div>
-                      </GlassCard>
-                    );
-                  })}
-                </div>
-              ) : (
-                <GlassCard className="p-10 text-center space-y-2">
-                  <ListTodo className="w-8 h-8 text-slate-600 mx-auto" />
-                  <p className="text-xs sm:text-sm text-slate-400 font-medium">
-                    {status === 'completed' ? 'No actionable tasks detected in this meeting.' : 'Action items will appear after AI analysis.'}
-                  </p>
-                </GlassCard>
-              )}
-            </motion.div>
-          )}
+                      </div>
+                    </GlassCard>
+                  );
+                })}
+              </div>
+            ) : (
+              <GlassCard className="p-10 text-center space-y-2">
+                <ListTodo className="w-8 h-8 text-slate-600 mx-auto" />
+                <p className="text-xs sm:text-sm text-slate-400 font-medium">
+                  {status === 'completed' ? 'No follow-ups detected in this meeting.' : 'Action items will appear after analysis.'}
+                </p>
+                {status === 'transcribed' && (
+                  <div className="pt-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleAnalyze(false)}
+                      icon={Sparkles}
+                    >
+                      Generate Meeting Brief
+                    </Button>
+                  </div>
+                )}
+              </GlassCard>
+            )}
+          </motion.div>
+        )}
 
-          {/* TAB 3: FULL TRANSCRIPT & AUDIO */}
-          {activeTab === 'transcript' && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="space-y-5"
-            >
-              {/* Audio Player in Transcript Tab */}
-              {audioSrc && (
-                <AudioPlayer
-                  src={audioSrc}
-                  title={title}
-                  initialDuration={duration}
-                />
-              )}
-
-              {/* Transcript Search Toolbar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 border border-slate-800 p-3 rounded-xl">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* TAB 3: THE CONVERSATION (Full Transcript) */}
+        {activeTab === 'transcript' && (
+          <motion.div
+            key="tab-transcript"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.15 }}
+            className="space-y-4"
+          >
+            {/* Search & Copy Bar */}
+            {transcript && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="relative w-full sm:w-80">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search keywords in transcript..."
-                    className="w-full pl-9 pr-4 py-1.5 rounded-lg bg-slate-950/80 border border-slate-700/80 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500"
+                    placeholder="Search dialogue..."
+                    className="w-full pl-8 pr-16 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-slate-600 transition-colors"
                   />
-                  {searchTerm && (
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-mono text-cyan-400">
-                      {matchCount} match{matchCount === 1 ? '' : 'es'}
+                  {searchTerm.trim() !== '' && (
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-medium">
+                      {matchCount} {matchCount === 1 ? 'match' : 'matches'}
                     </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-2 justify-end">
-                  <button
-                    type="button"
-                    onClick={handleCopyTranscript}
-                    disabled={!transcript}
-                    className="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-800 text-xs text-slate-300 hover:text-white flex items-center gap-1.5 border border-slate-700/60 transition-colors disabled:opacity-40 cursor-pointer"
-                  >
-                    {copied ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-emerald-400">Copied</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copy Transcript</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+                <Button
+                  variant="glass"
+                  size="sm"
+                  onClick={handleCopyTranscript}
+                  icon={copied ? Check : Copy}
+                >
+                  {copied ? 'Copied ✓' : 'Copy Conversation'}
+                </Button>
               </div>
+            )}
 
-              {/* Transcript Paragraphs */}
-              {transcript ? (
-                <GlassCard className="p-6 sm:p-8 space-y-4 max-h-[600px] overflow-y-auto font-sans leading-relaxed">
-                  {filteredLines.length > 0 ? (
-                    filteredLines.map((line, idx) => (
-                      <div key={idx} className="flex items-start gap-3 text-xs sm:text-sm text-slate-300 py-1 border-b border-slate-800/40 last:border-0">
-                        <span className="text-[10px] font-mono text-slate-500 shrink-0 mt-0.5 select-none">
-                          {idx + 1}
-                        </span>
-                        <p className="flex-1 whitespace-pre-wrap leading-relaxed">
-                          {line}
-                        </p>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-xs text-slate-500">
-                      No transcript segments matching "{searchTerm}".
-                    </div>
-                  )}
-                </GlassCard>
-              ) : (
-                <GlassCard className="p-10 text-center space-y-2">
-                  <FileText className="w-8 h-8 text-slate-600 mx-auto" />
-                  <p className="text-xs sm:text-sm text-slate-400 font-medium">
-                    Transcript not generated yet.
+            {/* Transcript Scroll Area */}
+            {transcript ? (
+              <GlassCard className="p-6 max-h-[550px] overflow-y-auto space-y-3">
+                {filteredLines.length > 0 ? (
+                  filteredLines.map((line, idx) => {
+                    const speakerMatch = line.match(/^([^:]+):\s*(.*)$/);
+
+                    if (speakerMatch) {
+                      const speakerName = speakerMatch[1];
+                      const dialogue = speakerMatch[2];
+
+                      return (
+                        <div key={idx} className="flex flex-col sm:flex-row sm:items-start gap-2 py-1.5 border-b border-slate-800/40 last:border-0">
+                          <span className="text-xs font-semibold text-violet-300 sm:w-28 shrink-0">
+                            {speakerName}:
+                          </span>
+                          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed flex-1">
+                            {dialogue}
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <p key={idx} className="text-xs sm:text-sm text-slate-200 leading-relaxed py-1">
+                        {line}
+                      </p>
+                    );
+                  })
+                ) : (
+                  <p className="text-xs text-slate-500 py-8 text-center">
+                    No matching dialogue found for "{searchTerm}".
                   </p>
-                </GlassCard>
-              )}
-            </motion.div>
-          )}
+                )}
+              </GlassCard>
+            ) : (
+              <GlassCard className="p-12 text-center space-y-3">
+                <FileText className="w-8 h-8 text-slate-600 mx-auto" />
+                <p className="text-xs sm:text-sm text-slate-400 font-medium">
+                  Transcript not generated yet.
+                </p>
+                {currentStatus === 'uploaded' && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => handleTranscribe(false)}
+                    icon={Sparkles}
+                  >
+                    Generate Transcript
+                  </Button>
+                )}
+              </GlassCard>
+            )}
+          </motion.div>
+        )}
 
-          {/* TAB 4: ASK MEETAURA */}
-          {activeTab === 'ask' && (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <AskMeetAura
-                meetingId={id}
-                transcriptAvailable={Boolean(transcript)}
-              />
-            </motion.div>
-          )}
-        </>
-      )}
+      </AnimatePresence>
 
       {/* Delete Confirmation Modal */}
       <DeleteModal
         isOpen={showDeleteModal}
+        title={title}
+        isDeleting={isDeleting}
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDeleteMeeting}
-        isLoading={isDeleting}
-        meetingTitle={title}
       />
+
     </div>
   );
 }

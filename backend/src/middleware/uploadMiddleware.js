@@ -16,7 +16,7 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 
 // Allowed file extensions and mime types
-const ALLOWED_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.mp4', '.aac', '.ogg', '.webm', '.flac'];
+const ALLOWED_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.mp4'];
 const ALLOWED_MIME_TYPES = [
   'audio/mpeg',
   'audio/mp3',
@@ -25,11 +25,6 @@ const ALLOWED_MIME_TYPES = [
   'audio/wave',
   'audio/x-m4a',
   'audio/m4a',
-  'audio/aac',
-  'audio/ogg',
-  'audio/webm',
-  'audio/flac',
-  'audio/x-flac',
   'audio/mp4',
   'video/mp4',
   'application/octet-stream' // fallback for some browsers uploading m4a
@@ -61,7 +56,7 @@ const fileFilter = (req, file, cb) => {
   if (isExtensionValid || isMimeTypeValid) {
     cb(null, true);
   } else {
-    const error = new Error(`Unsupported file type '${ext}'. Please upload an audio file (MP3, WAV, M4A, MP4, AAC, OGG, WEBM, FLAC).`);
+    const error = new Error(`Unsupported file type '${ext}'. Please upload an MP3, WAV, M4A, or MP4 file.`);
     error.status = 400;
     error.code = 'INVALID_FILE_TYPE';
     cb(error, false);

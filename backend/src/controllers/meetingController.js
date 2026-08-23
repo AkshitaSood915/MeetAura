@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import { Meeting } from '../models/Meeting.js';
 import { UPLOADS_DIR } from '../middleware/uploadMiddleware.js';
 import { transcribeAudioFile } from '../services/transcriptionService.js';
-import { analyzeMeetingTranscript, askMeetingQuestion } from '../services/analysisService.js';
+import { analyzeMeetingTranscript } from '../services/analysisService.js';
 
 /**
  * @desc   Upload meeting audio and create MongoDB meeting record
@@ -15,32 +15,16 @@ export const uploadMeeting = async (req, res, next) => {
     if (!req.file) {
       return res.status(400).json({
         status: 'error',
-        message: 'No audio file uploaded. Please select an audio file (MP3, WAV, M4A, MP4, AAC, OGG, WEBM, FLAC).'
+        message: 'No audio file uploaded. Please select an audio file (MP3, WAV, M4A, MP4).'
       });
     }
 
-    // Check for empty files (0 bytes)
-    if (req.file.size === 0) {
-      if (req.file.path && fs.existsSync(req.file.path)) {
-        try {
-          await fs.promises.unlink(req.file.path);
-        } catch (unlinkErr) {
-          console.error('Failed to cleanup empty uploaded file:', unlinkErr);
-        }
-      }
-      return res.status(400).json({
-        status: 'error',
-        message: 'The uploaded audio file is empty (0 bytes). Please upload a valid audio recording.'
-      });
-    }
-
-    let title = typeof req.body.title === 'string' ? req.body.title.trim().slice(0, 200) : '';
+    let title = req.body.title && req.body.title.trim();
     if (!title) {
       const ext = path.extname(req.file.originalname);
       title = path.basename(req.file.originalname, ext)
         .replace(/[-_]/g, ' ')
-        .replace(/\b\w/g, c => c.toUpperCase())
-        .slice(0, 200);
+        .replace(/\b\w/g, c => c.toUpperCase());
     }
 
     const meeting = await Meeting.create({
@@ -48,7 +32,7 @@ export const uploadMeeting = async (req, res, next) => {
       originalFileName: req.file.originalname,
       filePath: req.file.filename,
       fileSize: req.file.size,
-      mimeType: req.file.mimetype || 'audio/mpeg',
+      mimeType: req.file.mimetype,
       status: 'uploaded',
       duration: 0,
       transcript: '',
@@ -111,10 +95,9 @@ export const transcribeMeeting = async (req, res, next) => {
     }
 
     if (meeting.status === 'transcribing' && !force) {
-      return res.status(200).json({
-        status: 'ok',
-        message: 'Meeting transcription is currently in progress. Please wait.',
-        meeting
+      return res.status(409).json({
+        status: 'error',
+        message: 'Meeting transcription is currently in progress. Please wait.'
       });
     }
 
@@ -214,10 +197,9 @@ export const analyzeMeeting = async (req, res, next) => {
     }
 
     if (meeting.status === 'analyzing' && !force) {
-      return res.status(200).json({
-        status: 'ok',
-        message: 'Meeting analysis is currently in progress. Please wait.',
-        meeting
+      return res.status(409).json({
+        status: 'error',
+        message: 'Meeting analysis is currently in progress. Please wait.'
       });
     }
 
@@ -389,113 +371,3 @@ export const deleteMeeting = async (req, res, next) => {
     next(error);
   }
 };
-
-/**
- * @desc   Toggle or update action item completion status
- * @route  PATCH /api/meetings/:id/action-items/:itemIndex
- */
-export const toggleActionItem = async (req, res, next) => {
-  try {
-    const { id, itemIndex } = req.params;
-    const index = parseInt(itemIndex, 10);
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Invalid meeting ID format.'
-      });
-    }
-
-    if (isNaN(index) || index < 0) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Invalid action item index.'
-      });
-    }
-
-    const meeting = await Meeting.findById(id);
-
-    if (!meeting) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Meeting not found.'
-      });
-    }
-
-    if (!Array.isArray(meeting.actionItems) || index >= meeting.actionItems.length) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Action item not found at specified index.'
-      });
-    }
-
-    const completed = typeof req.body.completed === 'boolean'
-      ? req.body.completed
-      : !meeting.actionItems[index].completed;
-
-    meeting.actionItems[index].completed = completed;
-    await meeting.save();
-
-    res.status(200).json({
-      status: 'ok',
-      message: `Action item marked as ${completed ? 'completed' : 'pending'}`,
-      actionItem: meeting.actionItems[index],
-      meeting
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * @desc   Ask a question about the current meeting transcript (Ask MeetAura)
- * @route  POST /api/meetings/:id/ask
- */
-export const askQuestion = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { question } = req.body;
-
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Invalid meeting ID format.'
-      });
-    }
-
-    if (!question || typeof question !== 'string' || question.trim() === '') {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Please provide a valid question about this meeting.'
-      });
-    }
-
-    const meeting = await Meeting.findById(id);
-
-    if (!meeting) {
-      return res.status(404).json({
-        status: 'error',
-        message: 'Meeting not found.'
-      });
-    }
-
-    if (!meeting.transcript || meeting.transcript.trim() === '') {
-      return res.status(400).json({
-        status: 'error',
-        message: 'This meeting does not have a transcript yet. Please generate a transcript first.'
-      });
-    }
-
-    const result = await askMeetingQuestion(meeting.transcript, question, id);
-
-    res.status(200).json({
-      status: 'ok',
-      question: question.trim(),
-      answer: result.answer
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-

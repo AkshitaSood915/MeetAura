@@ -20,21 +20,7 @@ if (!fs.existsSync(DATA_FILE)) {
 function readLocalData() {
   try {
     const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-    const parsed = JSON.parse(raw || '[]');
-    if (Array.isArray(parsed)) {
-      return parsed.map(item => ({
-        ...item,
-        actionItems: Array.isArray(item.actionItems)
-          ? item.actionItems.map(ai => ({
-              task: ai.task || '',
-              owner: ai.owner || null,
-              deadline: ai.deadline || null,
-              completed: Boolean(ai.completed)
-            }))
-          : []
-      }));
-    }
-    return [];
+    return JSON.parse(raw || '[]');
   } catch {
     return [];
   }
@@ -52,8 +38,7 @@ function writeLocalData(data) {
 const actionItemSchema = new mongoose.Schema({
   task: { type: String, required: true },
   owner: { type: String, default: null },
-  deadline: { type: String, default: null },
-  completed: { type: Boolean, default: false }
+  deadline: { type: String, default: null }
 }, { _id: false });
 
 const meetingSchema = new mongoose.Schema({
@@ -160,43 +145,21 @@ export const Meeting = {
       return MongooseMeetingModel.find(filter, projection);
     }
 
-    const executeFind = (sortCriteria) => {
-      let list = readLocalData();
-      if (filter && Object.keys(filter).length > 0) {
-        list = list.filter(item => {
-          return Object.entries(filter).every(([k, v]) => item[k] === v);
-        });
-      }
-
-      if (sortCriteria && typeof sortCriteria === 'object') {
-        const [sortKey, sortDir] = Object.entries(sortCriteria)[0] || ['createdAt', -1];
-        list.sort((a, b) => {
-          const valA = a[sortKey];
-          const valB = b[sortKey];
-          if (sortDir === -1) {
-            return new Date(valB) - new Date(valA);
-          }
-          return new Date(valA) - new Date(valB);
-        });
-      } else {
+    return {
+      sort: (sortCriteria) => {
+        const list = readLocalData();
         list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
+        // If projection specifies excluding transcript
+        if (projection && projection.transcript === 0) {
+          return Promise.resolve(list.map(m => {
+            const { transcript, ...rest } = m;
+            return rest;
+          }));
+        }
+        return Promise.resolve(list);
       }
-
-      // If projection specifies excluding transcript
-      if (projection && projection.transcript === 0) {
-        return list.map(m => {
-          const { transcript, ...rest } = m;
-          return rest;
-        });
-      }
-      return list;
     };
-
-    const queryPromise = Promise.resolve(executeFind());
-    queryPromise.sort = (sortCriteria) => {
-      return Promise.resolve(executeFind(sortCriteria));
-    };
-    return queryPromise;
   },
 
   findById: async (id) => {

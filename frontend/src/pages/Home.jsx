@@ -5,21 +5,14 @@ import {
   Sparkles, 
   Upload, 
   FileText, 
-  CheckCircle2, 
-  ListTodo, 
   ArrowRight, 
   BrainCircuit, 
-  ShieldCheck, 
-  Clock, 
   AudioWaveform,
-  Calendar,
-  Layers
 } from 'lucide-react';
 import Button from '../components/Button';
 import GlassCard from '../components/GlassCard';
-import Badge from '../components/Badge';
 import MeetingCard from '../components/MeetingCard';
-import { Skeleton, MeetingCardSkeleton, StatsWidgetSkeleton } from '../components/ui/Skeleton';
+import { MeetingCardSkeleton, StatsWidgetSkeleton } from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import { meetingApi } from '../services/api';
 
@@ -55,72 +48,47 @@ export function Home() {
   }, []);
 
   return (
-    <div className="space-y-16 sm:space-y-24 py-6 sm:py-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12 sm:space-y-16">
       
       {/* 1. Hero Section */}
-      <section className="relative text-center max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-10 space-y-6">
-        {/* Glow Accent */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-violet-600/15 rounded-full blur-3xl pointer-events-none -z-10" />
+      <section className="text-center max-w-3xl mx-auto pt-4 sm:pt-8 space-y-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-violet-300">
+          <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+          <span>AI Meeting Intelligence</span>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-violet-500/20 text-xs text-violet-300 backdrop-blur-md shadow-lg"
-        >
-          <Sparkles className="w-3.5 h-3.5 text-aura-cyan animate-pulse" />
-          <span>Next-Generation AI Meeting Intelligence</span>
-        </motion.div>
-
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="font-display font-extrabold text-4xl sm:text-6xl text-white tracking-tight leading-tight sm:leading-none"
-        >
+        <h1 className="font-display font-bold text-3xl sm:text-5xl text-white tracking-tight leading-tight">
           Turn conversations into{' '}
           <span className="text-gradient">clear next steps.</span>
-        </motion.h1>
+        </h1>
 
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed"
-        >
-          Upload your audio recordings, transcribe conversations with Gemini 2.5, and instantly generate executive summaries, key decisions, and prioritized tasks.
-        </motion.p>
+        <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
+          Transform raw meeting recordings into structured executive briefs, confirmed decisions, and clear deliverables powered by Gemini.
+        </p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2"
-        >
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
           <Button
             to="/upload"
             variant="primary"
-            size="lg"
+            size="md"
             icon={Upload}
-            className="w-full sm:w-auto shadow-xl shadow-violet-500/20"
           >
             Upload Meeting
           </Button>
           <Button
             to="/meetings"
             variant="glass"
-            size="lg"
+            size="md"
             icon={FileText}
-            className="w-full sm:w-auto"
           >
             View Workspace
           </Button>
-        </motion.div>
+        </div>
       </section>
 
-      {/* 2. Real Workspace Statistics (Live MongoDB Metrics) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+      {/* 2. Workspace Overview Metrics */}
+      <section>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {loading ? (
             <>
               <StatsWidgetSkeleton />
@@ -130,131 +98,131 @@ export function Home() {
             </>
           ) : (
             <>
-              <GlassCard className="p-5 sm:p-6 space-y-1 bg-slate-900/60">
+              <GlassCard className="p-4 sm:p-5 space-y-1 bg-slate-900/40">
                 <span className="text-xs text-slate-400 font-medium">Total Meetings</span>
-                <p className="font-display font-bold text-2xl sm:text-3xl text-white">
+                <p className="font-display font-bold text-2xl text-white">
                   {stats.totalMeetings}
                 </p>
-                <p className="text-[11px] text-slate-500">Audio recordings uploaded</p>
+                <p className="text-[11px] text-slate-500">Recordings uploaded</p>
               </GlassCard>
 
-              <GlassCard className="p-5 sm:p-6 space-y-1 bg-slate-900/60">
+              <GlassCard className="p-4 sm:p-5 space-y-1 bg-slate-900/40">
                 <span className="text-xs text-slate-400 font-medium">Transcriptions</span>
-                <p className="font-display font-bold text-2xl sm:text-3xl text-aura-cyan">
+                <p className="font-display font-bold text-2xl text-cyan-400">
                   {stats.transcribedMeetings}
                 </p>
-                <p className="text-[11px] text-slate-500">Gemini 2.5 audio processed</p>
+                <p className="text-[11px] text-slate-500">Conversations transcribed</p>
               </GlassCard>
 
-              <GlassCard className="p-5 sm:p-6 space-y-1 bg-slate-900/60">
-                <span className="text-xs text-slate-400 font-medium">Analyzed Meetings</span>
-                <p className="font-display font-bold text-2xl sm:text-3xl text-emerald-400">
+              <GlassCard className="p-4 sm:p-5 space-y-1 bg-slate-900/40">
+                <span className="text-xs text-slate-400 font-medium">Briefs Synthesized</span>
+                <p className="font-display font-bold text-2xl text-emerald-400">
                   {stats.completedMeetings}
                 </p>
-                <p className="text-[11px] text-slate-500">Summaries & decisions synthesized</p>
+                <p className="text-[11px] text-slate-500">Summaries & decisions ready</p>
               </GlassCard>
 
-              <GlassCard className="p-5 sm:p-6 space-y-1 bg-slate-900/60">
-                <span className="text-xs text-slate-400 font-medium">Action Items</span>
-                <p className="font-display font-bold text-2xl sm:text-3xl text-aura-violet">
+              <GlassCard className="p-4 sm:p-5 space-y-1 bg-slate-900/40">
+                <span className="text-xs text-slate-400 font-medium">Next Steps</span>
+                <p className="font-display font-bold text-2xl text-violet-400">
                   {stats.totalActionItems}
                 </p>
-                <p className="text-[11px] text-slate-500">Deliverables tracked with owners</p>
+                <p className="text-[11px] text-slate-500">Deliverables identified</p>
               </GlassCard>
             </>
           )}
         </div>
       </section>
 
-      {/* 3. Recent Meetings Workspace Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+      {/* 3. Recent Meetings */}
+      <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-display font-bold text-xl sm:text-2xl text-white">
+            <h2 className="font-display font-semibold text-lg text-white">
               Recent Meetings
             </h2>
-            <p className="text-xs sm:text-sm text-slate-400">
+            <p className="text-xs text-slate-400">
               Pick up where you left off or review recent meeting intelligence.
             </p>
           </div>
 
           <Link
             to="/meetings"
-            className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-aura-cyan hover:text-cyan-300 transition-colors"
+            className="inline-flex items-center gap-1 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
           >
             <span>View All</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <MeetingCardSkeleton />
             <MeetingCardSkeleton />
             <MeetingCardSkeleton />
             <MeetingCardSkeleton />
           </div>
         ) : recentMeetings.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {recentMeetings.map((meeting) => (
               <MeetingCard key={meeting._id || meeting.id} meeting={meeting} />
             ))}
           </div>
         ) : (
           <EmptyState
-            title="No meetings uploaded yet"
-            description="Upload your first audio file to start generating automated transcripts, summaries, and action items."
+            title="No meetings yet"
+            description="Your next meeting brief will appear here once you upload an audio recording."
             actionLabel="Upload First Meeting"
             actionTo="/upload"
           />
         )}
       </section>
 
-      {/* 4. AI Pipeline Overview */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="text-center max-w-xl mx-auto space-y-2">
-          <h2 className="font-display font-bold text-2xl text-white">
-            End-to-End AI Workflow
+      {/* 4. Workflow Overview */}
+      <section className="space-y-6 pt-4">
+        <div className="text-center max-w-lg mx-auto space-y-1">
+          <h2 className="font-display font-semibold text-lg text-white">
+            How MeetAura Works
           </h2>
-          <p className="text-xs sm:text-sm text-slate-400">
-            Engineered with Gemini 2.5 Flash for low latency and high accuracy.
+          <p className="text-xs text-slate-400">
+            A reliable AI meeting intelligence pipeline.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <GlassCard className="p-6 space-y-3 bg-slate-900/40">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-              <AudioWaveform className="w-5 h-5" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <GlassCard className="p-5 space-y-2.5 bg-slate-900/30">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+              <AudioWaveform className="w-4 h-4" />
             </div>
-            <h3 className="font-display font-semibold text-base text-white">
-              1. Secure Audio Upload
+            <h3 className="font-display font-medium text-sm text-white">
+              1. Audio Recording
             </h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Support for MP3, WAV, M4A, and MP4 formats up to 100MB with isolated server disk storage.
+              Upload MP3, WAV, M4A, or MP4 recordings up to 100MB stored securely.
             </p>
           </GlassCard>
 
-          <GlassCard className="p-6 space-y-3 bg-slate-900/40">
-            <div className="w-10 h-10 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-aura-violet">
-              <Sparkles className="w-5 h-5" />
+          <GlassCard className="p-5 space-y-2.5 bg-slate-900/30">
+            <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400">
+              <Sparkles className="w-4 h-4" />
             </div>
-            <h3 className="font-display font-semibold text-base text-white">
-              2. Gemini Audio Transcription
+            <h3 className="font-display font-medium text-sm text-white">
+              2. Transcription
             </h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              High-accuracy speaker-attributed transcription preserving chronological dialogue.
+              Accurate chronological transcription preserving speakers and dialogue.
             </p>
           </GlassCard>
 
-          <GlassCard className="p-6 space-y-3 bg-slate-900/40">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-aura-cyan">
-              <BrainCircuit className="w-5 h-5" />
+          <GlassCard className="p-5 space-y-2.5 bg-slate-900/30">
+            <div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <BrainCircuit className="w-4 h-4" />
             </div>
-            <h3 className="font-display font-semibold text-base text-white">
-              3. Structured Intelligence
+            <h3 className="font-display font-medium text-sm text-white">
+              3. Meeting Brief & Tasks
             </h3>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Executive summaries, consensus decisions, and task assignments with assignees and deadlines.
+              Synthesized summary, key decisions, and prioritized deliverables.
             </p>
           </GlassCard>
         </div>
