@@ -54,16 +54,15 @@ export function Home() {
       <section className="text-center max-w-3xl mx-auto pt-4 sm:pt-8 space-y-4">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-violet-300">
           <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-          <span>AI Meeting Intelligence</span>
+          <span>AI-powered meeting intelligence</span>
         </div>
 
         <h1 className="font-display font-bold text-3xl sm:text-5xl text-white tracking-tight leading-tight">
-          Turn conversations into{' '}
-          <span className="text-gradient">clear next steps.</span>
+          Turn every meeting into <span className="text-gradient">momentum.</span>
         </h1>
 
         <p className="text-xs sm:text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
-          Transform raw meeting recordings into structured executive briefs, confirmed decisions, and clear deliverables powered by Gemini.
+          MeetAura listens, understands, and turns your conversations into clear decisions, key insights, and next steps.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2">
@@ -81,12 +80,12 @@ export function Home() {
             size="md"
             icon={FileText}
           >
-            View Workspace
+            View Meetings
           </Button>
         </div>
       </section>
 
-      {/* 2. Workspace Overview Metrics */}
+      {/* 2. Workspace Statistics (Connected to Real Backend Data) */}
       <section>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {loading ? (
@@ -99,7 +98,7 @@ export function Home() {
           ) : (
             <>
               <GlassCard className="p-4 sm:p-5 space-y-1 bg-slate-900/40">
-                <span className="text-xs text-slate-400 font-medium">Total Meetings</span>
+                <span className="text-xs text-slate-400 font-medium">Meetings Captured</span>
                 <p className="font-display font-bold text-2xl text-white">
                   {stats.totalMeetings}
                 </p>
@@ -107,15 +106,15 @@ export function Home() {
               </GlassCard>
 
               <GlassCard className="p-4 sm:p-5 space-y-1 bg-slate-900/40">
-                <span className="text-xs text-slate-400 font-medium">Transcriptions</span>
+                <span className="text-xs text-slate-400 font-medium">Conversations Transcribed</span>
                 <p className="font-display font-bold text-2xl text-cyan-400">
                   {stats.transcribedMeetings}
                 </p>
-                <p className="text-[11px] text-slate-500">Conversations transcribed</p>
+                <p className="text-[11px] text-slate-500">Audio processed</p>
               </GlassCard>
 
               <GlassCard className="p-4 sm:p-5 space-y-1 bg-slate-900/40">
-                <span className="text-xs text-slate-400 font-medium">Briefs Synthesized</span>
+                <span className="text-xs text-slate-400 font-medium">Meeting Briefs</span>
                 <p className="font-display font-bold text-2xl text-emerald-400">
                   {stats.completedMeetings}
                 </p>
@@ -123,7 +122,7 @@ export function Home() {
               </GlassCard>
 
               <GlassCard className="p-4 sm:p-5 space-y-1 bg-slate-900/40">
-                <span className="text-xs text-slate-400 font-medium">Next Steps</span>
+                <span className="text-xs text-slate-400 font-medium">Action Items</span>
                 <p className="font-display font-bold text-2xl text-violet-400">
                   {stats.totalActionItems}
                 </p>
@@ -142,7 +141,7 @@ export function Home() {
               Recent Meetings
             </h2>
             <p className="text-xs text-slate-400">
-              Pick up where you left off or review recent meeting intelligence.
+              Pick up where you left off.
             </p>
           </div>
 
@@ -172,20 +171,20 @@ export function Home() {
           <EmptyState
             title="No meetings yet"
             description="Your next meeting brief will appear here once you upload an audio recording."
-            actionLabel="Upload First Meeting"
+            actionLabel="Upload Meeting"
             actionTo="/upload"
           />
         )}
       </section>
 
-      {/* 4. Workflow Overview */}
+      {/* 4. How MeetAura Works */}
       <section className="space-y-6 pt-4">
         <div className="text-center max-w-lg mx-auto space-y-1">
           <h2 className="font-display font-semibold text-lg text-white">
             How MeetAura Works
           </h2>
           <p className="text-xs text-slate-400">
-            A reliable AI meeting intelligence pipeline.
+            From conversation to clarity.
           </p>
         </div>
 

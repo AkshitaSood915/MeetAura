@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
 import { 
   Search, 
   Plus, 
-  ArrowUpDown, 
   FileAudio
 } from 'lucide-react';
 import Button from '../components/Button';
@@ -110,10 +108,10 @@ export function MeetingsList() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="font-display font-bold text-2xl text-white tracking-tight">
-            Meetings Workspace
+            Your meeting intelligence
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Your centralized meeting recordings, transcripts, and AI deliverables.
+            Every recording, insight, decision, and next step — in one place.
           </p>
         </div>
 
@@ -124,7 +122,7 @@ export function MeetingsList() {
           icon={Plus}
           className="shrink-0"
         >
-          New Meeting
+          Upload Meeting
         </Button>
       </div>
 
@@ -138,7 +136,7 @@ export function MeetingsList() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search meetings by title..."
+              placeholder="Search your meetings..."
               className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-slate-700 transition-colors"
             />
           </div>

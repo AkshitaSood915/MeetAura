@@ -11,7 +11,6 @@ import {
 } from 'lucide-react';
 import GlassCard from '../components/GlassCard';
 import Button from '../components/Button';
-import Badge from '../components/Badge';
 import { formatFileSize } from '../utils/formatters';
 import { meetingApi } from '../services/api';
 import { useToast } from '../context/ToastContext';
@@ -135,10 +134,10 @@ export function Upload() {
       {/* Header */}
       <div className="text-center space-y-2">
         <h1 className="font-display font-bold text-2xl sm:text-3xl text-white tracking-tight">
-          Upload Meeting Audio
+          Bring the conversation. We'll find what matters.
         </h1>
         <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto">
-          Select or drop your audio recording to start AI transcription and analysis.
+          Drop a meeting recording here and MeetAura will turn it into a clear, actionable brief.
         </p>
       </div>
 
@@ -149,7 +148,7 @@ export function Upload() {
           glow={isDragging}
           className={`p-8 sm:p-10 text-center transition-all duration-200 border-2 ${
             isDragging 
-              ? 'border-violet-500/80 bg-violet-950/20' 
+              ? 'border-violet-500/80 bg-violet-950/20 scale-[1.005]' 
               : file 
               ? 'border-emerald-500/40 bg-slate-900/60' 
               : 'border-dashed border-slate-800 hover:border-slate-700 bg-slate-900/30'
@@ -185,7 +184,7 @@ export function Upload() {
 
                 <div className="space-y-1">
                   <p className="text-sm font-semibold text-white">
-                    Drop your audio file here
+                    Drop your recording here
                   </p>
                   <p className="text-xs text-slate-400">
                     or{' '}
