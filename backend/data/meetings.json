@@ -1,0 +1,26 @@
+[
+  {
+    "_id": "6a8ac5b78a6ce691cbea8ecc",
+    "id": "6a8ac5b78a6ce691cbea8ecc",
+    "title": "Akshita  (1)",
+    "originalFileName": "Akshita_ (1).mp4",
+    "filePath": "meeting-1787479479826-bb435b53-Akshita___1_.mp4",
+    "fileSize": 4994897,
+    "mimeType": "video/mp4",
+    "status": "completed",
+    "duration": 0,
+    "transcript": "Akshita Sood: Hello everyone, my name is Akshita Sood and I am from Agra, Uttar Pradesh. I am currently pursuing my B.Tech in Computer Science Engineering with a specialization in Cloud Computing and Automation from VIT Bhopal. I am in my pre-final year. \n\nTalking about my skills, I have a good understanding of Data Structures and Algorithms in C++ and I have experience in front-end development where I build clean and user-friendly interfaces. I am also interested in Python, especially for automation and AI-based applications. \n\nI have worked on projects like Generative AI-based coding agent, an interview mock system, and a front-end based medical website called MediDoc, which provides healthcare information along with an AI assistant. \n\nIn terms of certifications, I have completed an NPTEL course in Internet of Things with a score of 97% and I was among the top 1% learners. I have also completed Google IT Certificate and Applied Machine Learning in Python Certificate from the University of Michigan. \n\nApart from academics, my hobbies include reading books and trying new recipes. I am a quick learner, adaptable, and always interested in learning new technologies, especially in cloud, AI, and automation. Thank you.",
+    "summary": "Akshita Sood, a pre-final year B.Tech student at VIT Bhopal specializing in Cloud Computing and Automation, introduced herself and outlined her technical background. She detailed her expertise in Data Structures, front-end development, and Python, along with projects involving Generative AI and healthcare web applications. Additionally, she shared her academic achievements, key certifications, and personal interests.",
+    "keyPoints": [
+      "Akshita is pursuing a B.Tech in CSE with a specialization in Cloud Computing and Automation at VIT Bhopal.",
+      "Core skills include Data Structures and Algorithms in C++, front-end development, and Python for automation and AI applications.",
+      "Key projects include a Generative AI-based coding agent, an interview mock system, and MediDoc (a front-end medical website with an AI assistant).",
+      "Certifications include NPTEL Internet of Things (scored 97%, top 1% learner), Google IT Certificate, and Applied Machine Learning in Python from the University of Michigan."
+    ],
+    "decisions": [],
+    "actionItems": [],
+    "errorMessage": "",
+    "createdAt": "2026-08-23T10:04:39.986Z",
+    "updatedAt": "2026-08-23T10:06:01.470Z"
+  }
+]
