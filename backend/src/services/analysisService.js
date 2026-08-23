@@ -91,12 +91,12 @@ function validateAndSanitizeAnalysis(raw) {
 }
 
 const CANDIDATE_MODELS = [
-  'gemini-3.6-flash',
-  'gemini-3.7-flash',
-  'gemini-flash-latest',
   'gemini-3.5-flash',
-  'gemini-2.5-flash',
-  'gemini-1.5-flash'
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-flash-latest',
+  'gemini-3.7-flash',
+  'gemini-3.6-flash'
 ];
 
 /**
@@ -225,6 +225,10 @@ ${transcript}
       // If error is invalid API key or auth, stop immediately
       if (modelError.message && (modelError.message.includes('API_KEY_INVALID') || modelError.message.includes('403') || modelError.message.includes('unauthorized'))) {
         break;
+      }
+      // If rate limited or high demand, brief pause before cascade fallback
+      if (modelError.message && (modelError.message.includes('429') || modelError.message.includes('503'))) {
+        await new Promise(r => setTimeout(r, 1500));
       }
     }
   }

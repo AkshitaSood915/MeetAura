@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -63,6 +63,9 @@ export function MeetingDetails() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Execution lock ref to prevent duplicate concurrent auto-triggers
+  const autoTriggerRef = useRef(false);
+
   const fetchMeetingDetails = async () => {
     try {
       setLoading(true);
@@ -70,8 +73,17 @@ export function MeetingDetails() {
       const data = await meetingApi.getMeetingById(id);
       setMeeting(data);
       
-      if (data && data.status === 'uploaded') {
+      if (data && data.status === 'uploaded' && !autoTriggerRef.current) {
+        autoTriggerRef.current = true;
         setActiveTab('insights');
+        setTimeout(() => {
+          handleTranscribe(false);
+        }, 300);
+      } else if (data && data.status === 'transcribed' && (!data.summary || data.summary.trim() === '') && !autoTriggerRef.current) {
+        autoTriggerRef.current = true;
+        setTimeout(() => {
+          handleAnalyze(false);
+        }, 300);
       }
     } catch (err) {
       console.error('Error loading meeting details:', err);
@@ -87,9 +99,35 @@ export function MeetingDetails() {
     }
   }, [id]);
 
+  // Live polling while meeting is processing in backend
+  useEffect(() => {
+    let intervalId = null;
+    const isProcessing = meeting && (meeting.status === 'transcribing' || meeting.status === 'analyzing');
+    
+    if (isProcessing) {
+      intervalId = setInterval(async () => {
+        try {
+          const updated = await meetingApi.getMeetingById(id);
+          if (updated && (updated.status !== meeting.status || updated.summary !== meeting.summary)) {
+            setMeeting(updated);
+            if (updated.status === 'completed') {
+              toast.success('AI Meeting Analysis complete!');
+            }
+          }
+        } catch (pollErr) {
+          // Silent polling error
+        }
+      }, 2000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [meeting?.status, id]);
+
   // Handle Stage 3 Transcription
   const handleTranscribe = async (force = false) => {
-    if (isTranscribing || isAnalyzing) return;
+    if (isTranscribing) return;
 
     try {
       setIsTranscribing(true);
@@ -99,9 +137,8 @@ export function MeetingDetails() {
       const result = await meetingApi.transcribeMeeting(id, force);
       if (result.meeting) {
         setMeeting(result.meeting);
-        toast.success('Gemini audio transcription completed!');
-        // Automatically proceed to analyze if transcript generated
-        if (result.meeting.transcript && result.meeting.status === 'transcribed') {
+        if (result.meeting.status === 'transcribed' && result.meeting.transcript) {
+          toast.success('Gemini audio transcription completed!');
           handleAnalyze(false);
         }
       } else {
@@ -110,9 +147,12 @@ export function MeetingDetails() {
     } catch (err) {
       console.error('Transcription error:', err);
       const errMsg = err.message || 'Transcription failed. Please try again.';
-      setOpError(errMsg);
-      toast.error(errMsg);
-      setMeeting(prev => ({ ...prev, status: 'failed', errorMessage: errMsg }));
+      // Do not mark failed if already in progress
+      if (!errMsg.toLowerCase().includes('in progress')) {
+        setOpError(errMsg);
+        toast.error(errMsg);
+        setMeeting(prev => ({ ...prev, status: 'failed', errorMessage: errMsg }));
+      }
     } finally {
       setIsTranscribing(false);
     }
@@ -120,7 +160,7 @@ export function MeetingDetails() {
 
   // Handle Stage 4 AI Meeting Analysis
   const handleAnalyze = async (force = false) => {
-    if (isAnalyzing || isTranscribing) return;
+    if (isAnalyzing) return;
 
     try {
       setIsAnalyzing(true);
@@ -130,17 +170,22 @@ export function MeetingDetails() {
       const result = await meetingApi.analyzeMeeting(id, force);
       if (result.meeting) {
         setMeeting(result.meeting);
-        toast.success('AI meeting insights synthesized!');
-        setActiveTab('insights');
+        if (result.meeting.status === 'completed') {
+          toast.success('AI meeting insights synthesized!');
+          setActiveTab('insights');
+        }
       } else {
         await fetchMeetingDetails();
       }
     } catch (err) {
       console.error('Analysis error:', err);
       const errMsg = err.message || 'Meeting analysis failed. Please try again.';
-      setOpError(errMsg);
-      toast.error(errMsg);
-      setMeeting(prev => ({ ...prev, status: 'failed', errorMessage: errMsg }));
+      // Do not mark failed if already in progress
+      if (!errMsg.toLowerCase().includes('in progress')) {
+        setOpError(errMsg);
+        toast.error(errMsg);
+        setMeeting(prev => ({ ...prev, status: 'failed', errorMessage: errMsg }));
+      }
     } finally {
       setIsAnalyzing(false);
     }

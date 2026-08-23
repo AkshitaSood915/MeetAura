@@ -31,12 +31,12 @@ function getMimeType(filePath, fallbackMime) {
 }
 
 const CANDIDATE_MODELS = [
-  'gemini-3.6-flash',
-  'gemini-3.7-flash',
-  'gemini-flash-latest',
   'gemini-3.5-flash',
-  'gemini-2.5-flash',
-  'gemini-1.5-flash'
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-flash-latest',
+  'gemini-3.7-flash',
+  'gemini-3.6-flash'
 ];
 
 /**
@@ -125,6 +125,19 @@ Follow these strict rules:
             mimeType,
             displayName: `meeting-${meetingId}`,
           });
+
+          // Wait for file state to become ACTIVE if in PROCESSING state
+          let fileInfo = await fileManager.getFile(uploadResult.file.name);
+          let attempts = 0;
+          while (fileInfo.state === 'PROCESSING' && attempts < 20) {
+            attempts++;
+            console.log(`⏳ Waiting for Google AI file processing (attempt ${attempts}/20)...`);
+            await new Promise(r => setTimeout(r, 2000));
+            fileInfo = await fileManager.getFile(uploadResult.file.name);
+          }
+          if (fileInfo.state === 'FAILED') {
+            throw new Error('Google AI File Processing failed for this video file.');
+          }
         }
 
         const result = await model.generateContent([
@@ -162,6 +175,10 @@ Follow these strict rules:
       // If error is invalid API key or auth, stop immediately
       if (modelError.message && (modelError.message.includes('API_KEY_INVALID') || modelError.message.includes('403') || modelError.message.includes('unauthorized'))) {
         break;
+      }
+      // If rate limited or high demand, brief pause before cascade fallback
+      if (modelError.message && (modelError.message.includes('429') || modelError.message.includes('503'))) {
+        await new Promise(r => setTimeout(r, 1500));
       }
     }
   }

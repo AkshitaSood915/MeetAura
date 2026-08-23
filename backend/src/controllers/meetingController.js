@@ -111,9 +111,10 @@ export const transcribeMeeting = async (req, res, next) => {
     }
 
     if (meeting.status === 'transcribing' && !force) {
-      return res.status(409).json({
-        status: 'error',
-        message: 'Meeting transcription is currently in progress. Please wait.'
+      return res.status(200).json({
+        status: 'ok',
+        message: 'Meeting transcription is currently in progress. Please wait.',
+        meeting
       });
     }
 
@@ -213,9 +214,10 @@ export const analyzeMeeting = async (req, res, next) => {
     }
 
     if (meeting.status === 'analyzing' && !force) {
-      return res.status(409).json({
-        status: 'error',
-        message: 'Meeting analysis is currently in progress. Please wait.'
+      return res.status(200).json({
+        status: 'ok',
+        message: 'Meeting analysis is currently in progress. Please wait.',
+        meeting
       });
     }
 
