@@ -157,7 +157,26 @@ export const meetingApi = {
       throw new Error(data.message || 'Failed to update action item');
     }
     return data;
+  },
+
+  /**
+   * Ask MeetAura a question grounded in the current meeting transcript
+   */
+  askMeetingQuestion: async (id, question) => {
+    const res = await fetch(`${API_BASE}/meetings/${id}/ask`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ question }),
+    });
+    const data = await parseResponse(res, 'Failed to get answer from MeetAura');
+    if (!res.ok) {
+      throw new Error(data.message || 'Failed to get answer from MeetAura');
+    }
+    return data;
   }
 };
+
 
 
