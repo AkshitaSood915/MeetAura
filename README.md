@@ -1,58 +1,73 @@
 # MeetAura
 
-## AI-Powered Meeting Intelligence
+### Turn conversations into clarity.
 
-MeetAura is a full-stack AI-powered meeting intelligence application that converts recorded meetings into structured and actionable information.
+MeetAura is an AI-powered meeting intelligence application that transforms recorded meetings into concise, structured, and actionable insights.
 
-Users can upload a meeting recording and get an AI-generated:
-
-- Meeting Summary
-- Key Discussion Points
-- Decisions
-- Action Items
-- Task Owners & Deadlines
-- Full Transcript
-
-The goal is simple: **turn meeting conversations into clear next steps.**
+Instead of replaying an entire meeting to find what actually matters, MeetAura processes the conversation and brings the important information together in one place.
 
 ---
 
-## Features
+## What does MeetAura do?
 
-- Upload meeting audio/video recordings
-- Drag-and-drop file upload
-- AI-powered transcription
-- AI-generated meeting summaries
-- Key discussion point extraction
-- Decision extraction
-- Action item extraction
-- Owner and deadline identification
-- Full meeting transcript
-- Meeting history and details
-- Responsive and animated UI
-- Error and loading states
+Upload a meeting recording and MeetAura generates:
+
+- **AI-powered Transcript** — Follow the complete conversation
+- **Meeting Summary** — Understand the meeting at a glance
+- **Key Points** — See the most important discussions
+- **Decisions** — Know what was actually decided
+- **Action Items** — Find out what needs to happen next
+- **Owners & Deadlines** — See who is responsible and when
+
+> **From a long conversation to a clear list of what happened and what's next.**
 
 ---
 
 ## How It Works
 
 ```text
-Meeting Recording
-       ↓
-     Upload
-       ↓
-   Transcription
-       ↓
-  Gemini AI Analysis
-       ↓
-+----------------------+
-| Meeting Summary      |
-| Key Points           |
-| Decisions            |
-| Action Items         |
-| Transcript           |
-+----------------------+
+        Meeting Recording
+               ↓
+            Upload
+               ↓
+         AI Transcription
+               ↓
+          Gemini Analysis
+               ↓
+      ┌────────┼────────┐
+      ↓        ↓        ↓
+   Summary  Decisions  Actions
+      ↓        ↓        ↓
+          Meeting Brief
+               ↓
+        Clear Next Steps
 ```
+
+---
+
+## Key Features
+
+### Smart Meeting Upload
+Upload your meeting audio/video through a simple drag-and-drop interface with file validation.
+
+### AI Transcription
+Convert the recorded conversation into a readable transcript using Google Gemini.
+
+### Meeting Intelligence
+Automatically extract the information that matters most:
+
+- Summary
+- Key discussion points
+- Decisions
+- Action items
+- Owners
+- Deadlines
+
+### Grounded AI Results
+MeetAura is designed to keep generated insights connected to the actual conversation and avoid inventing decisions or tasks that were never discussed.
+
+### Clean Meeting Workspace
+Review your meeting intelligence and transcript through a focused, responsive interface.
 
 ---
 
@@ -72,7 +87,6 @@ Meeting Recording
 - Node.js
 - Express.js
 - Multer
-- Mongoose
 - CORS
 - dotenv
 
@@ -80,7 +94,7 @@ Meeting Recording
 
 - Google Gemini API
 
-Gemini is used for meeting transcription and extracting structured meeting intelligence from the transcript.
+Gemini powers both the meeting transcription and the analysis of the generated transcript.
 
 ---
 
@@ -102,7 +116,6 @@ MeetAura/
 │   │   ├── controllers/
 │   │   ├── routes/
 │   │   ├── services/
-│   │   ├── models/
 │   │   └── middleware/
 │   ├── uploads/
 │   └── package.json
@@ -114,14 +127,22 @@ MeetAura/
 
 ## Getting Started
 
-### 1. Clone the repository
+### Prerequisites
+
+Make sure you have:
+
+- Node.js 18+
+- npm
+- A Google Gemini API key
+
+### Clone the Repository
 
 ```bash
 git clone https://github.com/AkshitaSood915/MeetAura.git
 cd MeetAura
 ```
 
-### 2. Backend Setup
+### Backend
 
 ```bash
 cd backend
@@ -132,7 +153,6 @@ Create a `.env` file inside `backend`:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key
-MONGODB_URI=your_mongodb_connection_string
 ```
 
 Start the backend:
@@ -141,7 +161,7 @@ Start the backend:
 npm run dev
 ```
 
-### 3. Frontend Setup
+### Frontend
 
 Open another terminal:
 
@@ -151,72 +171,102 @@ npm install
 npm run dev
 ```
 
-Open the URL provided by Vite in your browser.
+Open the local URL provided by Vite.
 
 ---
 
 ## Environment Variables
 
-The backend uses environment variables for configuration.
+The backend requires:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key
-MONGODB_URI=your_mongodb_connection_string
 ```
 
-Never commit your `.env` file or expose API keys in frontend code.
-
-MongoDB is supported for persistent meeting data, while the project also includes a local JSON fallback for development/demo usage.
+Keep your API key private and never commit the `.env` file to GitHub.
 
 ---
 
-## AI Processing
+## The AI Pipeline
 
-MeetAura uses Gemini to process the meeting in two main stages:
+MeetAura processes every meeting through a simple pipeline:
 
-### Transcription
+**Record → Transcribe → Understand → Extract → Act**
 
-The uploaded recording is processed to generate a conversation transcript.
+### 1. Transcribe
 
-### Meeting Analysis
+The uploaded recording is processed to generate the conversation transcript.
 
-The transcript is analyzed to extract:
+### 2. Understand
+
+The transcript is passed to Gemini with instructions to understand the context of the meeting.
+
+### 3. Extract
+
+The AI identifies:
+
+- Important discussion points
+- Decisions
+- Explicit action items
+- Responsible people
+- Mentioned deadlines
+
+### 4. Act
+
+The final information is presented as a structured meeting brief so users can quickly understand what happened and what needs to happen next.
+
+---
+
+## Why MeetAura?
+
+Meeting recordings are useful, but finding the important information inside them isn't always easy.
+
+MeetAura focuses on the part that comes **after the meeting**:
 
 ```text
-Summary
-Key Points
-Decisions
-Action Items
-Owners
-Deadlines
+What happened?
+     ↓
+What was decided?
+     ↓
+What needs to happen next?
 ```
 
-The AI is instructed to keep the generated information grounded in the actual transcript and avoid inventing decisions or tasks.
+The goal isn't just to create another transcript.
+
+**The goal is to turn conversations into actionable information.**
 
 ---
 
 ## Current Scope
 
-MeetAura focuses on the core meeting intelligence workflow:
+MeetAura currently focuses on the core meeting intelligence workflow:
 
 ```text
-Upload → Transcribe → Analyze → Understand → Act
+Upload
+  ↓
+Transcribe
+  ↓
+Analyze
+  ↓
+Summarize
+  ↓
+Take Action
 ```
 
-The project is currently a **working demonstration** of AI-powered meeting processing and does not include additional enterprise features such as authentication, team collaboration, Slack integration, or calendar integration.
+The project is currently a working demonstration of AI-powered meeting processing.
 
 ---
 
 ## Future Improvements
 
-Potential future improvements include:
+Possible future improvements include:
 
-- Authentication
-- Cloud file storage
+- User authentication
+- Cloud-based recording storage
 - Advanced meeting search
 - Meeting sharing
 - Productivity tool integrations
-- Advanced meeting analytics
+- Cross-meeting insights and analytics
 
 ---
 
