@@ -14,15 +14,9 @@ const allowedOrigins = config.clientUrl.split(',').map(url => url.trim());
 
 // Global Middleware
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS blocked for origin: ${origin}`));
-    }
-  },
-  credentials: true
-}));
+  origin:process.env.CLIENT_URL,
+  credentials:true
+}))
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
