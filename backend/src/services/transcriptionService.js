@@ -57,7 +57,7 @@ export async function transcribeAudioFile(relativeOrFullPath, fallbackMime, meet
 
   const genAI = new GoogleGenerativeAI(apiKey);
   // Try gemini-1.5-flash which has broad stable availability across all Google AI API keys
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
   const transcriptionPrompt = `
 You are an expert audio transcription assistant.
@@ -124,11 +124,20 @@ Follow these strict rules:
     console.log(`✅ Transcription completed for meeting: ${meetingId}`);
     return transcriptResult.trim();
 
-  } catch (error) {
-    const cleanMsg = cleanGeminiErrorMessage(error);
-    console.error(`❌ Transcription failed for meeting: ${meetingId} - ${cleanMsg}`);
-    throw new Error(cleanMsg);
-  } finally {
+  } 
+  catch (error) {
+  console.error('❌ ORIGINAL GEMINI TRANSCRIPTION ERROR:');
+  console.error(error);
+  console.error('Message:', error?.message);
+  console.error('Status:', error?.status);
+  console.error('Details:', error?.errorDetails);
+
+  const cleanMsg = cleanGeminiErrorMessage(error);
+  console.error(`❌ Transcription failed for meeting: ${meetingId} - ${cleanMsg}`);
+
+  throw new Error(cleanMsg);
+  }
+   finally {
     if (fileManager && uploadResult && uploadResult.file && uploadResult.file.name) {
       try {
         await fileManager.deleteFile(uploadResult.file.name);
