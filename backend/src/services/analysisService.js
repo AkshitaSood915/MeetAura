@@ -31,7 +31,7 @@ export async function analyzeTranscript(transcriptText, meetingId = 'unknown') {
   const genAI = new GoogleGenerativeAI(apiKey);
   // Using gemini-1.5-flash with structured JSON response
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-3.6-flash',
     generationConfig: {
       responseMimeType: 'application/json',
       temperature: 0.2
@@ -108,6 +108,9 @@ ${transcriptText}
   }
 }
 
+export const analyzeMeetingTranscript = analyzeTranscript;
+
 export default {
-  analyzeTranscript
+  analyzeTranscript,
+  analyzeMeetingTranscript
 };
