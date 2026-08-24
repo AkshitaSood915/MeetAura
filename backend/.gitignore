@@ -1,6 +1,26 @@
+# Dependencies
 node_modules/
 .env
-uploads/*
-!uploads/.gitkeep
-.DS_Store
+.env.*
+uploads/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Build files
+dist/
+build/
+.next/
+out/
+
+# VS Code
+.vscode/
+
+# Logs
 *.log
+
+# OS files
+.DS_Store
+Thumbs.db
